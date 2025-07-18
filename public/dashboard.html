@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sports Buddy | Dashboard</title>
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <h1>Welcome to Sports Buddy Dashboard</h1>
+
+    <section>
+      <h2>Add Event</h2>
+      <input type="text" id="eventName" placeholder="Event Name" />
+      <input type="text" id="eventLocation" placeholder="Location" />
+      <input type="date" id="eventDate" />
+      <button id="addEventBtn">Add Event</button>
+    </section>
+
+    <section>
+      <h2>All Events</h2>
+      <ul id="eventList"></ul>
+    </section>
+
+    <script type="module">
+      import { db, auth } from "./scripts/firebaseConfig.js";
+      import {
+        addDoc,
+        collection,
+        onSnapshot,
+        query,
+        orderBy,
+      } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+      import { logAction } from "./scripts/logger.js";
+
+      // Add Event Function
+      document
+        .getElementById("addEventBtn")
+        .addEventListener("click", async () => {
+          const name = document.getElementById("eventName").value;
+          const location = document.getElementById("eventLocation").value;
+          const date = document.getElementById("eventDate").value;
+          const user = auth.currentUser;
+
+          if (!user) {
+            alert("You must be logged in!");
+            return;
+          }
+
+          if (!name || !location || !date) {
+            alert("Please fill all fields.");
+            return;
+          }
+
+          const eventData = {
+            name,
+            location,
+            date,
+            createdBy: user.email,
+            createdAt: new Date(),
+          };
+
+          try {
+            await addDoc(collection(db, "events"), eventData);
+            logAction(user.email, "Event Added", name);
+            alert("Event added successfully!");
+            document.getElementById("eventName").value = "";
+            document.getElementById("eventLocation").value = "";
+            document.getElementById("eventDate").value = "";
+          } catch (error) {
+            console.error("Error adding event:", error);
+            alert("Failed to add event.");
+          }
+        });
+
+      // Show Events in Real Time
+      const eventList = document.getElementById("eventList");
+      const eventsRef = query(
+        collection(db, "events"),
+        orderBy("createdAt", "desc")
+      );
+
+      onSnapshot(eventsRef, (snapshot) => {
+        eventList.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const li = document.createElement("li");
+          li.textContent = `${data.name} - ${data.location} - ${data.date} (by ${data.createdBy})`;
+          eventList.appendChild(li);
+        });
+      });
+    </script>
+  </body>
+</html>
