@@ -1,25 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Sports Buddy | Admin Panel</title>
-    <script type="module" src="./scripts/admin.js"></script>
+    <title>Sports Buddy | Dashboard</title>
+    <link rel="stylesheet" href="./styles/main.css" />
   </head>
   <body>
-    <h2>Add Category</h2>
-    <input id="catName" placeholder="Category Name" />
-    <button onclick="addCategory(catName.value)">Add Category</button>
-
-    <h2>Add City</h2>
-    <input id="cityName" placeholder="City" />
-    <input id="areas" placeholder="Area1, Area2, ..." />
-    <button
-      onclick="addCity(cityName.value, areas.value.split(',').map(a => a.trim()))"
-    >
-      Add City
-    </button>
-
-    <h2>Delete Event</h2>
-    <input id="eventId" placeholder="Event ID" />
-    <button onclick="deleteSport(eventId.value)">Delete</button>
+    <h1>Welcome to Sports Buddy!</h1>
+    <p>This is the dashboard. You are successfully logged in.</p>
+    <a href="index.html">Log out</a>
   </body>
 </html>
