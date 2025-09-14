@@ -2,11 +2,224 @@
 <html>
   <head>
     <title>Sports Buddy | Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
     <link rel="stylesheet" href="./styles/main.css" />
   </head>
   <body>
-    <h1>Welcome to Sports Buddy!</h1>
-    <p>This is the dashboard. You are successfully logged in.</p>
-    <a href="index.html">Log out</a>
+    <main class="container">
+      <nav>
+        <ul>
+          <li><h1>Sports Buddy Dashboard</h1></li>
+        </ul>
+        <ul>
+          <li><a href="#" id="logoutBtn" role="button">Log out</a></li>
+        </ul>
+      </nav>
+
+      <article>
+        <header>
+          <div class="grid">
+            <h2>Your Events</h2>
+            <button id="createEventBtn">Create New Event</button>
+          </div>
+        </header>
+        <div id="userEventsList">
+          <p>Loading your events...</p>
+        </div>
+        <div id="userMessage" class="message"></div>
+      </article>
+    </main>
+
+    <dialog id="eventModal">
+      <article>
+        <header>
+          <a href="#close" aria-label="Close" class="close" id="closeModalBtn"></a>
+          <h2 id="modalTitle">Create Event</h2>
+        </header>
+        <form id="eventForm">
+          <input type="hidden" id="eventId" />
+          <label for="eventName">Event Name</label>
+          <input type="text" id="eventName" required />
+
+          <label for="eventCategory">Category</label>
+          <select id="eventCategory" required></select>
+
+          <label for="eventCity">City</label>
+          <select id="eventCity" required></select>
+
+          <label for="eventArea">Area</label>
+          <select id="eventArea" required></select>
+
+          <label for="eventDate">Date & Time</label>
+          <input type="datetime-local" id="eventDateTime" required />
+
+          <button type="submit" id="saveEventBtn">Save Event</button>
+        </form>
+      </article>
+    </dialog>
+
+    <script type="module">
+      import { onAuth } from "./scripts/auth.js";
+      import { auth } from "./scripts/firebaseConfig.js";
+      import { signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+      import { getCategories, getCities, getEvents } from "./scripts/admin.js";
+      import {
+        addEvent,
+        updateEvent,
+        deleteEvent,
+      } from "./scripts/user.js";
+
+      let currentUser = null;
+      let citiesData = [];
+      let allEvents = [];
+
+      const eventModal = document.getElementById("eventModal");
+      const eventForm = document.getElementById("eventForm");
+      const userEventsList = document.getElementById("userEventsList");
+      const userMessage = document.getElementById("userMessage");
+
+      onAuth((user) => {
+        if (!user) {
+          window.location.href = "index.html";
+        } else {
+          currentUser = user;
+          loadInitialData();
+        }
+      });
+
+      document.getElementById("logoutBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        signOut(auth).catch((error) => console.error("Logout error", error));
+      });
+
+      document.getElementById("createEventBtn").addEventListener("click", () => {
+        eventForm.reset();
+        document.getElementById("eventId").value = "";
+        document.getElementById("modalTitle").textContent = "Create Event";
+        eventModal.showModal();
+      });
+
+      document.getElementById("closeModalBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        eventModal.close();
+      });
+
+      async function loadInitialData() {
+        await Promise.all([loadDropdownData(), loadAllEvents()]);
+      }
+
+      async function loadDropdownData() {
+        const [categories, cities] = await Promise.all([getCategories(), getCities()]);
+        citiesData = cities;
+
+        const categorySelect = document.getElementById("eventCategory");
+        categorySelect.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+        const citySelect = document.getElementById("eventCity");
+        citySelect.innerHTML = cities.map(c => `<option value="${c.id}">${c.id}</option>`).join('');
+        
+        citySelect.dispatchEvent(new Event('change'));
+      }
+
+      document.getElementById("eventCity").addEventListener('change', (e) => {
+        const selectedCity = citiesData.find(c => c.id === e.target.value);
+        const areaSelect = document.getElementById("eventArea");
+        if (selectedCity && selectedCity.areas) {
+          areaSelect.innerHTML = selectedCity.areas.map(a => `<option value="${a}">${a}</option>`).join('');
+        } else {
+          areaSelect.innerHTML = '';
+        }
+      });
+
+      async function loadAllEvents() {
+        allEvents = await getEvents();
+        if (allEvents.length === 0) {
+          userEventsList.innerHTML = "<p>No events have been created yet.</p>";
+          return;
+        }
+        userEventsList.innerHTML = allEvents.map(event => {
+          const isOwner = event.userId === currentUser.uid;
+          const ownerControls = isOwner ? `
+            <div>
+              <button class="small" data-action="edit" data-id="${event.id}">Edit</button>
+              <button class="small secondary" data-action="delete" data-id="${event.id}">Delete</button>
+            </div>
+          ` : '';
+          return `
+          <div class="list-item">
+            <span><strong>${event.name}</strong> - ${new Date(event.dateTime).toLocaleString()}</span>
+            ${ownerControls}
+          </div>
+        `}).join('');
+      }
+
+      eventForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const eventId = document.getElementById("eventId").value;
+        const eventData = {
+          name: document.getElementById("eventName").value,
+          category: document.getElementById("eventCategory").value,
+          city: document.getElementById("eventCity").value,
+          area: document.getElementById("eventArea").value,
+          dateTime: document.getElementById("eventDateTime").value,
+          userId: currentUser.uid,
+        };
+
+        try {
+          if (eventId) {
+            await updateEvent(eventId, eventData);
+            userMessage.textContent = "Event updated successfully!";
+          } else {
+            await addEvent(eventData);
+            userMessage.textContent = "Event created successfully!";
+          }
+          userMessage.className = "message success";
+          eventModal.close();
+          loadAllEvents();
+        } catch (error) {
+          console.error("Error saving event:", error);
+          userMessage.textContent = "Failed to save event.";
+          userMessage.className = "message error";
+        }
+      });
+
+      userEventsList.addEventListener("click", async (e) => {
+        const action = e.target.dataset.action;
+        const eventId = e.target.dataset.id;
+        if (!action || !eventId) return;
+
+        if (action === "delete") {
+          if (confirm("Are you sure you want to delete this event?")) {
+            try {
+              await deleteEvent(eventId, currentUser.uid);
+              userMessage.textContent = "Event deleted successfully.";
+              userMessage.className = "message success";
+              loadAllEvents();
+            } catch (error) {
+              console.error("Error deleting event:", error);
+              userMessage.textContent = "Failed to delete event.";
+              userMessage.className = "message error";
+            }
+          }
+        }
+
+        if (action === "edit") {
+          const eventToEdit = allEvents.find(event => event.id === eventId);
+          if (eventToEdit) {
+            document.getElementById("modalTitle").textContent = "Edit Event";
+            document.getElementById("eventId").value = eventToEdit.id;
+            document.getElementById("eventName").value = eventToEdit.name;
+            document.getElementById("eventCategory").value = eventToEdit.category;
+            document.getElementById("eventCity").value = eventToEdit.city;
+            document.getElementById("eventCity").dispatchEvent(new Event('change'));
+            setTimeout(() => {
+              document.getElementById("eventArea").value = eventToEdit.area;
+            }, 100);
+            document.getElementById("eventDateTime").value = eventToEdit.dateTime;
+            eventModal.showModal();
+          }
+        }
+      });
+    </script>
   </body>
 </html>
