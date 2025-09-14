@@ -1,39 +1,68 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f5f5f5;
-  color: #333;
-  margin: 0;
-  padding: 0;
+.message {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--pico-border-radius);
+  text-align: center;
+}
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
 }
 
-.container {
-  width: 300px;
-  margin: 50px auto;
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+.message:empty {
+  display: none;
 }
 
-h2 {
-  margin-top: 0;
+.hidden {
+  display: none;
 }
 
-input,
-button {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
+.form-toggle-text {
+  text-align: center;
+  font-size: 0.875em;
+  margin-top: 1.5rem;
+  margin-bottom: 0;
 }
 
-button {
-  background: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
+#logoutBtn {
+  --pico-background-color: #c82333;
+  --pico-border-color: #c82333;
+  --pico-color: var(--pico-secondary-inverse);
+}
+#logoutBtn:hover {
+  --pico-background-color: #a51d2a;
+  --pico-border-color: #a51d2a;
 }
 
-button:hover {
-  background: #0056b3;
+main.container:not(.admin) {
+  max-width: 480px;
+}
+
+main.container.admin {
+  max-width: 960px;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  margin-bottom: 0.5rem;
+}
+
+.list-item button.small {
+  margin-bottom: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75em;
+}
+form {
+  margin-bottom: 0;
 }
