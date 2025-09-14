@@ -9,6 +9,7 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { logAction } from "./logger.js";
 
@@ -68,6 +69,16 @@ export async function getEvents() {
     events.push({ id: doc.id, ...doc.data() });
   });
   return events;
+}
+
+export async function addEvent(eventData) {
+  const eventWithTimestamp = {
+    ...eventData,
+    createdAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(collection(db, "events"), eventWithTimestamp);
+  await logAction("admin", "Event Added", eventData.name);
+  return docRef;
 }
 
 export async function updateEvent(eventId, eventData) {

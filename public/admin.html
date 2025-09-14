@@ -61,7 +61,12 @@
       </div>
 
       <article>
-        <h2>Manage Sport Events</h2>
+        <header>
+          <div class="grid">
+            <h2>Manage Sport Events</h2>
+            <button id="createEventBtn">Create New Event</button>
+          </div>
+        </header>
         <p>Below is a list of all created sport events. You can edit or delete them from here.</p>
         <div id="eventList"></div>
         <div id="deleteMessage" class="message"></div>
@@ -108,6 +113,7 @@
         getCities,
         addAreaToCity,
         removeAreaFromCity,
+        addEvent,
         getEvents,
         updateEvent,
         deleteSport,
@@ -118,6 +124,7 @@
           window.location.href = "index.html";
           return;
         }
+        currentUser = user;
         const role = await getUserRole(user.uid);
         if (role !== "admin") {
           alert("Access Denied. You are not an admin.");
@@ -137,12 +144,20 @@
       const eventListEl = document.getElementById("eventList");
       const eventModal = document.getElementById("eventModal");
       const eventForm = document.getElementById("eventForm");
+      let currentUser = null;
       let citiesData = [];
       let allEvents = [];
 
       document.getElementById("closeModalBtn").addEventListener("click", (e) => {
         e.preventDefault();
         eventModal.close();
+      });
+
+      document.getElementById("createEventBtn").addEventListener("click", () => {
+        eventForm.reset();
+        document.getElementById("eventId").value = "";
+        document.getElementById("modalTitle").textContent = "Create Event";
+        eventModal.showModal();
       });
 
       document.getElementById("eventCity").addEventListener('change', (e) => {
@@ -283,6 +298,7 @@
         if (e.target.tagName === "BUTTON" && e.target.dataset.action === "edit") {
           const eventId = e.target.dataset.id;
           const eventToEdit = allEvents.find(event => event.id === eventId);
+          document.getElementById("modalTitle").textContent = "Edit Event";
           if (eventToEdit) {
             document.getElementById("eventId").value = eventToEdit.id;
             document.getElementById("eventName").value = eventToEdit.name;
@@ -301,23 +317,31 @@
       eventForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const eventId = document.getElementById("eventId").value;
-        const eventData = {
+        let eventData = {
           name: document.getElementById("eventName").value,
           category: document.getElementById("eventCategory").value,
           city: document.getElementById("eventCity").value,
           area: document.getElementById("eventArea").value,
           dateTime: document.getElementById("eventDateTime").value,
         };
+
         const messageEl = document.getElementById("deleteMessage");
         try {
-          await updateEvent(eventId, eventData);
-          messageEl.textContent = "Event updated successfully!";
+          if (eventId) {
+            await updateEvent(eventId, eventData);
+            messageEl.textContent = "Event updated successfully!";
+          } else {
+            eventData.userId = currentUser.uid;
+            await addEvent(eventData);
+            messageEl.textContent = "Event created successfully!";
+          }
           messageEl.className = "message success";
           eventModal.close();
           loadEvents();
         } catch (error) {
-          console.error("Error updating event:", error);
-          messageEl.textContent = "Failed to update event.";
+          const action = eventId ? 'update' : 'create';
+          console.error(`Error ${action} event:`, error);
+          messageEl.textContent = `Failed to ${action} event.`;
           messageEl.className = "message error";
         }
       });
