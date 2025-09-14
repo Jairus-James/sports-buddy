@@ -62,16 +62,16 @@
       import { onAuth } from "./scripts/auth.js";
       import { auth } from "./scripts/firebaseConfig.js";
       import { signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-      import { getCategories, getCities } from "./scripts/admin.js";
+      import { getCategories, getCities, getEvents } from "./scripts/admin.js";
       import {
         addEvent,
-        getEventsForUser,
         updateEvent,
         deleteEvent,
       } from "./scripts/user.js";
 
       let currentUser = null;
       let citiesData = [];
+      let allEvents = [];
 
       const eventModal = document.getElementById("eventModal");
       const eventForm = document.getElementById("eventForm");
@@ -105,7 +105,7 @@
       });
 
       async function loadInitialData() {
-        await Promise.all([loadDropdownData(), loadUserEvents()]);
+        await Promise.all([loadDropdownData(), loadAllEvents()]);
       }
 
       async function loadDropdownData() {
@@ -131,21 +131,26 @@
         }
       });
 
-      async function loadUserEvents() {
-        const events = await getEventsForUser(currentUser.uid);
-        if (events.length === 0) {
-          userEventsList.innerHTML = "<p>You haven't created any events yet.</p>";
+      async function loadAllEvents() {
+        allEvents = await getEvents();
+        if (allEvents.length === 0) {
+          userEventsList.innerHTML = "<p>No events have been created yet.</p>";
           return;
         }
-        userEventsList.innerHTML = events.map(event => `
-          <div class="list-item">
-            <span><strong>${event.name}</strong> - ${new Date(event.dateTime).toLocaleString()}</span>
+        userEventsList.innerHTML = allEvents.map(event => {
+          const isOwner = event.userId === currentUser.uid;
+          const ownerControls = isOwner ? `
             <div>
               <button class="small" data-action="edit" data-id="${event.id}">Edit</button>
               <button class="small secondary" data-action="delete" data-id="${event.id}">Delete</button>
             </div>
+          ` : '';
+          return `
+          <div class="list-item">
+            <span><strong>${event.name}</strong> - ${new Date(event.dateTime).toLocaleString()}</span>
+            ${ownerControls}
           </div>
-        `).join('');
+        `}).join('');
       }
 
       eventForm.addEventListener("submit", async (e) => {
@@ -170,7 +175,7 @@
           }
           userMessage.className = "message success";
           eventModal.close();
-          loadUserEvents();
+          loadAllEvents();
         } catch (error) {
           console.error("Error saving event:", error);
           userMessage.textContent = "Failed to save event.";
@@ -189,7 +194,7 @@
               await deleteEvent(eventId, currentUser.uid);
               userMessage.textContent = "Event deleted successfully.";
               userMessage.className = "message success";
-              loadUserEvents();
+              loadAllEvents();
             } catch (error) {
               console.error("Error deleting event:", error);
               userMessage.textContent = "Failed to delete event.";
@@ -199,8 +204,7 @@
         }
 
         if (action === "edit") {
-          const events = await getEventsForUser(currentUser.uid);
-          const eventToEdit = events.find(event => event.id === eventId);
+          const eventToEdit = allEvents.find(event => event.id === eventId);
           if (eventToEdit) {
             document.getElementById("modalTitle").textContent = "Edit Event";
             document.getElementById("eventId").value = eventToEdit.id;
